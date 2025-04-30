@@ -1573,20 +1573,38 @@
 
         /* Stiluri pentru autentificare admin */
         .admin-login {
-            position: fixed;
-            top: 880px;
-            right: 840px;
-            z-index: 10000;
+            position: absolute;
+            top: 110px;
+            right: 210px;
+            padding: 10px 20px;
             background: #4CAF50;
             color: white;
             border: none;
-            padding: 8px 15px;
-            border-radius: 4px;
+            border-radius: 5px;
             cursor: pointer;
-            font-size: 14px;
+            z-index: 1000;
+            font-size: 16px;
             transition: all 0.3s ease;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            pointer-events: auto;
+        }
+
+        .admin-login:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .admin-login:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .admin-login.logged-in {
+            background: #f44336;
+        }
+
+        .admin-login.logged-in:hover {
+            background: #d32f2f;
         }
 
         .header {
@@ -1611,22 +1629,49 @@
         <script>
         // Adăugăm variabilă și funcții pentru autentificare
         let isAdmin = false;
-        const ADMIN_PASSWORD = 'GeorgeAdrian1'; // Schimbă această parolă cu una sigură
+        const ADMIN_PASSWORD_HASH = 'd28d8174de0e43c22b9ede77c05033a943bda6b4d084c399be04acb85723ed69';
 
-        function toggleAdmin() {
+        // Funcție pentru generarea hash-ului
+        async function hashPassword(password) {
+            try {
+                const encoder = new TextEncoder();
+                const data = encoder.encode(password);
+                const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                console.log('Hash generat pentru parola:', hashHex);
+                return hashHex;
+            } catch (error) {
+                console.error('Eroare la generarea hash-ului:', error);
+                return null;
+            }
+        }
+
+        async function toggleAdmin() {
             if (!isAdmin) {
                 const password = prompt('Introduceți parola de administrator:');
-                if (password === ADMIN_PASSWORD) {
-                    isAdmin = true;
-                    document.body.classList.add('admin-mode');
-                    const adminButton = document.querySelector('.admin-login');
-                    if (adminButton) {
-                        adminButton.textContent = 'Deconectare Admin';
-                        adminButton.style.background = '#ff4444';
+                if (!password) return;
+
+                try {
+                    const hashedPassword = await hashPassword(password);
+                    console.log('Hash stocat:', ADMIN_PASSWORD_HASH);
+                    console.log('Hash generat:', hashedPassword);
+                    
+                    if (hashedPassword === ADMIN_PASSWORD_HASH) {
+                        isAdmin = true;
+                        document.body.classList.add('admin-mode');
+                        const adminButton = document.querySelector('.admin-login');
+                        if (adminButton) {
+                            adminButton.textContent = 'Deconectare Admin';
+                            adminButton.style.background = '#ff4444';
+                        }
+                        alert('Autentificat cu succes ca administrator!');
+                    } else {
+                        alert('Parolă incorectă!');
                     }
-                    alert('Autentificat cu succes ca administrator!');
-                } else {
-                    alert('Parolă incorectă!');
+                } catch (error) {
+                    console.error('Eroare la autentificare:', error);
+                    alert('A apărut o eroare la autentificare. Vă rugăm să încercați din nou.');
                 }
             } else {
                 isAdmin = false;
