@@ -1,0 +1,2899 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=1.0">
+    <title>Harta Punctelor de Reciclare</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.locatecontrol/dist/L.Control.Locate.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Roboto', sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #map { 
+            height: calc(100vh - 180px); /* Înălțime calculată în funcție de viewport minus header și footer */
+            width: 100%;
+            margin-bottom: 60px;
+        }
+
+        .header {
+            animation: fadeIn 0.8s ease-out;
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            padding: 20px 0 10px 0;
+            text-align: center;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: relative;
+            pointer-events: none;
+        }
+
+        h2 {
+            margin: 0;
+            font-size: 32px;
+            font-weight: 500;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .subtitle {
+            font-size: 18px;
+            margin-top: 5px;
+            opacity: 0.9;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        .popup-img {
+            width: 150px;
+            height: auto;
+            border-radius: 10px;
+            margin-top: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .popup-img:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .search-container {
+            position: absolute;
+            top: 29px;
+            right: 50px;
+            background: rgba(76, 175, 80, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 10px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(76, 175, 80, 0.15);
+            z-index: 10002;
+            width: 350px;
+            height: fit-content;
+            pointer-events: auto;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(76, 175, 80, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .search-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+        }
+
+        .search-container input {
+            padding: 12px 15px;
+            border: 2px solid rgba(76, 175, 80, 0.3);
+            border-radius: 8px;
+            font-size: 14px;
+            width: 100%;
+            outline: none;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.9);
+            color: #2d5a30;
+        }
+
+        .search-container input::placeholder {
+            color: #4CAF50;
+            opacity: 0.7;
+            transition: all 0.3s ease;
+        }
+
+        .search-container input:focus {
+            border-color: #4CAF50;
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.2);
+            background: white;
+        }
+
+        .search-container input:focus::placeholder {
+            transform: translateY(-20px);
+            opacity: 0;
+        }
+
+        .search-container button {
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+            box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        .search-container button::before {
+            content: '🔍';
+            font-size: 16px;
+        }
+
+        .search-container button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+            background: linear-gradient(135deg, #45a049 0%, #4CAF50 100%);
+        }
+
+        @media (max-width: 768px) {
+            .search-container {
+                width: 90%;
+                right: 5%;
+                top: 5px;
+            }
+        }
+
+        .legend {
+            position: absolute;
+            top: 47px;
+            left: 10px;
+            transform: translateY(-50%);
+            padding: 5px;
+            border-radius: 8px;
+            z-index: 1000;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0px;
+            width: 435px;
+            background: transparent;
+            box-shadow: none;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 2px 5px;
+            padding: 3px;
+            transition: background-color 0.3s;
+            border-radius: 4px;
+        }
+
+        .legend-item:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            margin-right: 5px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+
+        .legend-text {
+            font-family: 'Roboto', sans-serif;
+            font-size: 12px;
+            white-space: nowrap;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+
+        .info-button-container {
+            position: fixed;
+            bottom: 35px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            background: rgba(51, 51, 51, 0.9);
+            height: 60px;
+            align-items: center;
+            z-index: 1000;
+            animation: slideUp 0.5s ease;
+        }
+
+        body.dark-mode .info-button-container {
+            background: rgba(26, 26, 26, 0.9);
+        }
+
+        .info-button, .info-button2 {
+            position: relative;
+            bottom: 0;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .info-button::before, .info-button2::before {
+            content: '📌';
+            margin-right: 8px;
+            font-size: 16px;
+        }
+
+        .info-button {
+            left: 20px;
+            background: #4CAF50;
+            color: white;
+        }
+
+        .info-button2 {
+            right: 20px;
+            background: #2196F3;
+            color: white;
+        }
+
+        .info-button:hover, .info-button2:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .info-box, #projectBox {
+            display: none;
+            position: fixed;
+            bottom: 100px;
+            width: 300px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+            z-index: 1001;
+            font-size: 14px;
+            line-height: 1.6;
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .info-box {
+            left: 20px;
+        }
+
+        #projectBox {
+            right: 20px;
+        }
+
+        .suggestion-box {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(76, 175, 80, 0.2);
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.1);
+            z-index: 10003;
+            pointer-events: auto;
+        }
+
+        .suggestion-item {
+            color: #2d5a30;
+            padding: 10px 15px;
+            border-bottom: 1px solid rgba(76, 175, 80, 0.1);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+        }
+
+        .suggestion-item:before {
+            content: '📍';
+            margin-right: 8px;
+        }
+
+        .suggestion-item:hover {
+            background: rgba(76, 175, 80, 0.1);
+            color: #4CAF50;
+            padding-left: 15px;
+        }
+
+        body.dark-mode .suggestion-item:hover {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4CAF50;
+        }
+
+        .footer {
+            background: #333;
+            color: white;
+            text-align: center;
+            padding: 8px;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            font-size: 12px;
+            height: 20px;
+            line-height: 20px;
+            z-index: 1001;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .footer a {
+            color: #4CAF50;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .footer a:hover {
+            color: #45a049;
+        }
+
+        .filter-container {
+            position: relative;
+            text-align: center;
+            margin: -10px auto 10px auto;
+            padding: 10px;
+            z-index: 1000;
+        }
+
+        .filter-button {
+            padding: 8px 16px;
+            margin: 0 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .filter-button:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+        .filter-button.active {
+            background: #4CAF50;
+            color: white;
+            animation: buttonPulse 0.3s ease;
+        }
+
+        @keyframes buttonPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .dark-mode-toggle {
+            position: absolute;
+            top: 110px;
+            left: 1300px;
+            z-index: 10001;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            pointer-events: auto;
+        }
+
+        .dark-mode-toggle * {
+            pointer-events: none;
+        }
+
+        /* Dark mode styles */
+        body.dark-mode {
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+
+        body.dark-mode .header {
+            background: linear-gradient(135deg, #2d5a30 0%, #1e4020 100%);
+        }
+
+        body.dark-mode .search-container {
+            background: rgba(45, 93, 48, 0.2);
+            border-color: rgba(76, 175, 80, 0.3);
+        }
+
+        body.dark-mode .search-container:hover {
+            background: rgba(45, 93, 48, 0.3);
+        }
+
+        body.dark-mode .search-container input {
+            background: rgba(26, 26, 26, 0.8);
+            color: #fff;
+            border-color: rgba(76, 175, 80, 0.4);
+        }
+
+        body.dark-mode .search-container input::placeholder {
+            color: #6abf6e;
+        }
+
+        body.dark-mode .suggestion-box {
+            background: rgba(26, 26, 26, 0.95);
+            border-color: rgba(76, 175, 80, 0.3);
+        }
+
+        body.dark-mode .suggestion-item {
+            color: #6abf6e;
+            border-bottom-color: rgba(76, 175, 80, 0.2);
+        }
+
+        body.dark-mode .suggestion-item:hover {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4CAF50;
+        }
+
+        body.dark-mode .filter-button {
+            background: #2d2d2d;
+            color: #ffffff;
+        }
+
+        body.dark-mode .filter-button:hover {
+            background: #3d3d3d;
+        }
+
+        body.dark-mode .filter-button.active {
+            background: #2d5a30;
+        }
+
+        body.dark-mode .info-box,
+        body.dark-mode #projectBox {
+            background: #2d2d2d;
+            color: #ffffff;
+        }
+
+        body.dark-mode .footer {
+            background: #1a1a1a;
+            border-top: 1px solid #444;
+        }
+
+        /* Animații pentru markeri */
+        @keyframes markerPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        /* Animație pentru încărcarea inițială */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Loading indicator pentru hartă */
+        .map-loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            z-index: 1000;
+            display: none;
+        }
+
+        .map-loading.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        /* Stiluri pentru scroll smooth */
+        html {
+            scroll-behavior: smooth;
+        }
+
+        /* Tooltip style */
+        [data-tooltip] {
+            position: relative;
+        }
+
+        [data-tooltip]:before {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 5px 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        [data-tooltip]:hover:before {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .popup-content {
+            text-align: center;
+            padding: 5px;
+        }
+
+        .popup-content h3 {
+            margin: 0 0 10px 0;
+            color: #4CAF50;
+            font-size: 16px;
+        }
+
+        .popup-content p {
+            margin: 10px 0;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .directions-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .directions-btn:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        body.dark-mode .popup-content h3 {
+            color: #6abf6e;
+        }
+
+        body.dark-mode .popup-content p {
+            color: #ccc;
+        }
+
+        /* Stiluri pentru butonul de localizare */
+        .nearest-button {
+            background: white;
+            border: 2px solid rgba(0,0,0,0.2);
+            border-radius: 4px;
+            width: 34px;
+            height: 34px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .nearest-button:hover {
+            background: #f4f4f4;
+        }
+
+        body.dark-mode .nearest-button {
+            background: #2d2d2d;
+            color: white;
+            border-color: rgba(255,255,255,0.2);
+        }
+
+        body.dark-mode .nearest-button:hover {
+            background: #3d3d3d;
+        }
+
+        /* Stiluri responsive îmbunătățite */
+        @media screen and (max-width: 1200px) {
+            .search-container {
+                width: 250px;
+            }
+
+            .legend {
+                width: 380px;
+            }
+        }
+
+        @media screen and (max-width: 992px) {
+            .search-container {
+                width: 220px;
+            }
+
+            .legend {
+                width: 340px;
+                font-size: 11px;
+            }
+        }
+
+        @media screen and (max-width: 768px) {
+            .header {
+                padding: 15px 0 5px 0;
+            }
+
+            h2 {
+                font-size: 24px;
+                padding: 0 10px;
+            }
+
+            .subtitle {
+                font-size: 16px;
+                padding: 0 10px;
+            }
+
+            .search-container {
+                position: relative;
+                top: 0;
+                right: 0;
+                width: 90%;
+                margin: 10px auto;
+                z-index: 1000;
+            }
+
+            .search-container input {
+                width: calc(100% - 80px);
+            }
+
+            .filter-container {
+                overflow-x: auto;
+                white-space: nowrap;
+                padding: 10px 0;
+                margin: 0;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .filter-button {
+                padding: 8px 12px;
+                margin: 0 3px;
+                font-size: 12px;
+            }
+
+            .legend {
+                position: relative;
+                top: 0;
+                left: 0;
+                width: 100%;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 5px;
+                padding: 5px;
+                margin: 10px auto;
+                background: rgba(0, 0, 0, 0.7);
+                border-radius: 4px;
+            }
+
+            .legend-item {
+                margin: 2px;
+            }
+
+            .legend-text {
+                font-size: 10px;
+            }
+
+            .info-button-container {
+                flex-direction: column;
+                height: auto;
+                padding: 10px;
+                gap: 10px;
+            }
+
+            .info-button, .info-button2 {
+                width: 100%;
+                margin: 5px 0;
+            }
+
+            .info-box, #projectBox {
+                width: 80%;
+                left: 50%;
+                transform: translateX(-50%);
+                font-size: 12px;
+                bottom: 120px;
+            }
+
+            .dark-mode-toggle {
+                position: absolute;
+                top: auto;
+                bottom: 80px;
+                left: 10px;
+                font-size: 12px;
+                padding: 8px 12px;
+            }
+
+            #map {
+                height: calc(100vh - 160px);
+                margin-bottom: 120px;
+            }
+
+            .footer {
+                height: auto;
+                padding: 10px;
+                font-size: 10px;
+                flex-direction: column;
+                gap: 5px;
+            }
+        }
+
+        /* Optimizări pentru ecrane foarte mici */
+        @media screen and (max-width: 320px) {
+            h2 {
+                font-size: 20px;
+            }
+
+            .subtitle {
+                font-size: 14px;
+            }
+
+            .search-container input {
+                width: calc(100% - 70px);
+                font-size: 12px;
+            }
+
+            .filter-button {
+                padding: 6px 10px;
+                font-size: 11px;
+            }
+        }
+
+        /* Optimizări pentru tablete */
+        @media screen and (min-width: 769px) and (max-width: 1024px) {
+            .search-container {
+                width: 300px;
+            }
+
+            .legend {
+                width: 350px;
+            }
+
+            .info-button-container {
+                padding: 0 10px;
+            }
+        }
+
+        /* Optimizări pentru orientarea landscape pe mobile */
+        @media screen and (max-height: 500px) and (orientation: landscape) {
+            #map {
+                height: calc(100vh - 150px);
+            }
+
+            .header {
+                padding: 10px 0;
+            }
+
+            .info-button-container {
+                flex-direction: row;
+                height: 50px;
+            }
+
+            .dark-mode-toggle {
+                bottom: 60px;
+            }
+        }
+
+        /* Eliminăm stilurile pentru ceas și vreme */
+        .weather-clock-container, #clock, #weather {
+            display: none;
+        }
+
+        .weather-clock-container {
+            position: absolute;
+            left: 10px;
+            top: 130px;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            width: 320px;
+            display: flex !important;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            backdrop-filter: blur(5px);
+            height: 3rem;
+        }
+
+        body.dark-mode .weather-clock-container {
+            background: rgba(45, 45, 45, 0.95);
+            color: white;
+        }
+
+        #clock {
+            font-size: 1.25rem;
+            font-weight: bold;
+            text-align: center;
+            color: #4CAF50;
+            margin: 0;
+            padding: 0 1rem;
+            display: block !important;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            border-right: 1px solid rgba(0,0,0,0.1);
+            min-width: 100px;
+        }
+
+        body.dark-mode #clock {
+            border-right-color: rgba(255,255,255,0.1);
+        }
+
+        #weather {
+            text-align: center;
+            display: flex !important;
+            flex-direction: row;
+            align-items: center;
+            padding: 0 0.5rem;
+            border-radius: 0.375rem;
+            background: transparent;
+            gap: 0.5rem;
+            flex: 1;
+        }
+
+        .weather-icon {
+            width: 2.5rem;
+            height: 2.5rem;
+            margin: 0;
+            object-fit: contain;
+        }
+
+        .weather-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.125rem;
+            flex: 1;
+        }
+
+        .weather-temp {
+            font-size: 1rem;
+            margin: 0;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .weather-desc {
+            font-size: 0.75rem;
+            color: #666;
+            margin: 0;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            overflow: hidden;
+            max-width: 150px;
+        }
+
+        body.dark-mode .weather-desc {
+            color: #ccc;
+        }
+
+        @media screen and (max-width: 768px) {
+            .weather-clock-container {
+                position: absolute;
+                left: 0;
+                top: 130px;
+                width: 320px;
+                transform: translateY(-50%);
+                height: 3rem;
+            }
+
+            #clock, .weather-temp, .weather-desc, .weather-icon {
+                font-size: inherit;
+            }
+        }
+
+        @media screen and (max-width: 480px) {
+            .weather-clock-container {
+                width: 100%;
+                border-radius: 0;
+            }
+        }
+
+        /* Ajustări pentru diferite dimensiuni de ecran */
+        @media screen and (min-width: 1200px) {
+            #map {
+                height: calc(100vh - 180px);
+            }
+        }
+
+        @media screen and (max-height: 600px) {
+            #map {
+                height: calc(100vh - 140px);
+            }
+        }
+
+        /* Adaug stilurile pentru butonul de feedback */
+        .feedback-button {
+            position: fixed;
+            bottom: 100px;
+            right: 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+        }
+
+        .feedback-button:hover {
+            transform: translateY(-2px);
+            background: #45a049;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .feedback-button:active {
+            transform: translateY(0);
+        }
+
+        body.dark-mode .feedback-button {
+            background: #45a049;
+        }
+
+        @media screen and (max-width: 768px) {
+            .feedback-button {
+                bottom: 120px;
+                right: 10px;
+                padding: 10px 15px;
+                font-size: 13px;
+            }
+        }
+
+        /* Stiluri pentru formularul de sugestii */
+        .suggest-point-button {
+            position: fixed;
+            bottom: 100px;
+            left: 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+        }
+
+        .suggest-point-button:hover {
+            transform: translateY(-2px);
+            background: #45a049;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            position: relative;
+            animation: modalAppear 0.3s ease-out;
+        }
+
+        @keyframes modalAppear {
+            from {
+                transform: translateY(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-close {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .suggestion-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .form-group label {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            border-color: #4CAF50;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+        }
+
+        .submit-button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .submit-button:hover {
+            background: #45a049;
+        }
+
+        body.dark-mode .modal-content {
+            background: #2d2d2d;
+            color: white;
+        }
+
+        body.dark-mode .form-group label {
+            color: #fff;
+        }
+
+        body.dark-mode .form-group input,
+        body.dark-mode .form-group select,
+        body.dark-mode .form-group textarea {
+            background: #1a1a1a;
+            border-color: #444;
+            color: white;
+        }
+
+        body.dark-mode .modal-close {
+            color: #fff;
+        }
+
+        @media screen and (max-width: 768px) {
+            .suggest-point-button {
+                bottom: 160px;
+                left: 10px;
+                padding: 10px 15px;
+                font-size: 13px;
+            }
+        }
+
+        .dark-map {
+            filter: brightness(0.7) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7);
+        }
+        
+        body.dark-mode .leaflet-marker-icon {
+            filter: brightness(1.2) contrast(1.2);
+        }
+        
+        body.dark-mode .leaflet-popup-content-wrapper {
+            background: #333;
+            color: #fff;
+        }
+        
+        body.dark-mode .leaflet-popup-tip {
+            background: #333;
+        }
+        
+        body.dark-mode .popup-content h3 {
+            color: #4CAF50;
+        }
+        
+        body.dark-mode .popup-content p {
+            color: #fff;
+        }
+
+        /* Rating System Styles */
+        .rating-container {
+            margin: 10px 0;
+            text-align: center;
+        }
+
+        .stars {
+            display: inline-flex;
+            gap: 5px;
+            direction: rtl;
+        }
+
+        .stars input[type="radio"] {
+            display: none;
+        }
+
+        .stars label {
+            cursor: pointer;
+            font-size: 25px;
+            color: #ddd;
+            transition: color 0.2s ease-in-out;
+        }
+
+        .stars label:hover,
+        .stars label:hover ~ label,
+        .stars input[type="radio"]:checked ~ label {
+            color: #ffd700;
+        }
+
+        .average-rating {
+            margin: 5px 0;
+            font-size: 14px;
+            color: #666;
+        }
+
+        body.dark-mode .average-rating {
+            color: #ccc;
+        }
+
+        .rating-count {
+            font-size: 12px;
+            color: #888;
+            margin-top: 2px;
+        }
+
+        body.dark-mode .rating-count {
+            color: #aaa;
+        }
+
+        .rating-submit {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-top: 5px;
+            transition: background-color 0.3s ease;
+        }
+
+        .rating-submit:hover {
+            background: #45a049;
+        }
+
+        .rating-submit:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+
+        .rating-message {
+            font-size: 12px;
+            margin-top: 5px;
+            color: #4CAF50;
+        }
+
+        .rating-error {
+            color: #f44336;
+        }
+
+        /* Stiluri pentru sistemul de comentarii */
+        .comments-container {
+            margin-top: 15px;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+        }
+
+        .comments-list {
+            max-height: 200px;
+            overflow-y: auto;
+            margin: 10px 0;
+            padding: 0 5px;
+        }
+
+        .comment-item {
+            background: #f9f9f9;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .comment-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .comment-text {
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+
+        .comment-form {
+            margin-top: 10px;
+        }
+
+        .comment-input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            resize: vertical;
+            min-height: 60px;
+            font-family: inherit;
+        }
+
+        .comment-submit {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background-color 0.3s ease;
+        }
+
+        .comment-submit:hover {
+            background: #45a049;
+        }
+
+        .comment-submit:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+
+        /* Dark mode pentru comentarii */
+        body.dark-mode .comment-item {
+            background: #2d2d2d;
+            color: #fff;
+        }
+
+        body.dark-mode .comment-header {
+            color: #aaa;
+        }
+
+        body.dark-mode .comment-input {
+            background: #1a1a1a;
+            border-color: #444;
+            color: #fff;
+        }
+
+        body.dark-mode .comments-container {
+            border-top-color: #444;
+        }
+
+        /* Scrollbar personalizat pentru lista de comentarii */
+        .comments-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .comments-list::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+
+        .comments-list::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 3px;
+        }
+
+        .comments-list::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        body.dark-mode .comments-list::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+
+        body.dark-mode .comments-list::-webkit-scrollbar-thumb {
+            background: #666;
+        }
+
+        /* Adăugăm stilurile pentru popup scroll în secțiunea de stiluri */
+        .leaflet-popup-content {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        .popup-content {
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 15px;
+            scrollbar-width: thin;
+            scrollbar-color: #4CAF50 #f0f0f0;
+        }
+
+        .popup-content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .popup-content::-webkit-scrollbar-track {
+            background: #f0f0f0;
+            border-radius: 4px;
+        }
+
+        .popup-content::-webkit-scrollbar-thumb {
+            background-color: #4CAF50;
+            border-radius: 4px;
+        }
+
+        .popup-header {
+            position: sticky;
+            top: 0;
+            background: white;
+            padding: 10px 15px;
+            border-bottom: 1px solid #eee;
+            z-index: 1;
+        }
+
+        .popup-body {
+            padding: 15px;
+        }
+
+        body.dark-mode .popup-header {
+            background: #2d2d2d;
+            border-bottom-color: #444;
+        }
+
+        /* Stiluri pentru popup și imagini */
+        .popup-img-container {
+            margin: -15px -15px 15px -15px;
+            position: relative;
+            background: #f5f5f5;
+            max-height: 200px;
+            overflow: hidden;
+        }
+
+        .popup-img {
+            width: 100%;
+            height: auto;
+            display: block;
+            margin: 0;
+            border-radius: 0;
+            object-fit: cover;
+            max-height: 200px;
+        }
+
+        /* Stiluri pentru butoanele de administrare */
+        .delete-button, .reset-ratings {
+            display: none !important;
+        }
+
+        body.admin-mode .delete-button,
+        body.admin-mode .reset-ratings {
+            display: inline-block !important;
+        }
+
+        // Modificăm funcția de resetare a ratingurilor
+        function resetRatings(locationName) {
+            if (!isAdmin) {
+                alert('Trebuie să fiți administrator pentru a reseta ratingurile!');
+                return;
+            }
+            
+            if (confirm('Sigur doriți să resetați toate ratingurile pentru această locație?')) {
+                if (ratings[locationName]) {
+                    delete ratings[locationName];
+                    localStorage.setItem('recyclingPointRatings', JSON.stringify(ratings));
+                    
+                    // Reîmprospătăm afișarea ratingului
+                    const popupContent = document.querySelector('.popup-content');
+                    if (popupContent) {
+                        const ratingContainer = popupContent.querySelector('.rating-container');
+                        if (ratingContainer) {
+                            const ratingValue = ratingContainer.querySelector('.rating-value');
+                            const ratingCount = ratingContainer.querySelector('.rating-count');
+                            if (ratingValue && ratingCount) {
+                                ratingValue.textContent = '0';
+                                ratingCount.textContent = '(0 voturi)';
+                            }
+
+                            // Reactivăm formularul de rating
+                            const form = ratingContainer.querySelector('.rating-form');
+                            if (form) {
+                                form.querySelectorAll('input[type="radio"]').forEach(input => {
+                                    input.disabled = false;
+                                    input.checked = false;
+                                });
+                                const submitButton = form.querySelector('.rating-submit');
+                                if (submitButton) {
+                                    submitButton.style.display = 'block';
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Modificăm template-ul pentru popup pentru a include verificarea de admin pentru butonul de reset
+        function createPopupContent(loc, index) {
+            return `
+                <div class="popup-content">
+                    <div class="popup-header">
+                        <h3>${loc.name}</h3>
+                    </div>
+                    <div class="popup-body">
+                        <div class="popup-img-container">
+                            <img src="${loc.img}" alt="${loc.name}" class="popup-img" onerror="this.src='https://via.placeholder.com/150'">
+                            <div class="coordinates-badge">
+                                ${loc.lat.toFixed(4)}, ${loc.lon.toFixed(4)}
+                            </div>
+                        </div>
+                        <div class="rating-container">
+                            <div class="average-rating">Rating: <span class="rating-value">0</span>/5</div>
+                            <div class="rating-count">(0 voturi)</div>
+                            <form class="rating-form" onsubmit="return false;">
+                                <div class="stars">
+                                    <input type="radio" id="star5-${index}" name="rating" value="5">
+                                    <label for="star5-${index}">★</label>
+                                    <input type="radio" id="star4-${index}" name="rating" value="4">
+                                    <label for="star4-${index}">★</label>
+                                    <input type="radio" id="star3-${index}" name="rating" value="3">
+                                    <label for="star3-${index}">★</label>
+                                    <input type="radio" id="star2-${index}" name="rating" value="2">
+                                    <label for="star2-${index}">★</label>
+                                    <input type="radio" id="star1-${index}" name="rating" value="1">
+                                    <label for="star1-${index}">★</label>
+                                </div>
+                                <button type="button" class="rating-submit" onclick="handleRating(this, '${loc.name}')">Trimite rating</button>
+                                <button type="button" class="reset-ratings" onclick="resetRatings('${loc.name}')">Resetează ratingurile</button>
+                                <div class="rating-message"></div>
+                            </form>
+                        </div>
+                        <div class="comments-container">
+                            <h4>Comentarii</h4>
+                            <div class="comments-list" id="comments-${index}">
+                                <!-- Comentariile vor fi adăugate dinamic aici -->
+                            </div>
+                            <form class="comment-form" onsubmit="return false;">
+                                <textarea class="comment-input" placeholder="Adaugă un comentariu..." required></textarea>
+                                <button type="button" class="comment-submit" onclick="handleComment(this, '${loc.name}', ${index})">Adaugă comentariu</button>
+                            </form>
+                        </div>
+                        <button class="directions-btn" data-lat="${loc.lat}" data-lon="${loc.lon}">
+                            Obține indicații
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Adăugăm stiluri pentru badgele de coordonate
+        .coordinates-badge {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        // Adăugăm stiluri pentru butoanele de ștergere
+        .delete-button {
+            background: #ff4444;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 2px 8px;
+            font-size: 12px;
+            cursor: pointer;
+            float: right;
+            margin-left: 10px;
+        }
+
+        .delete-button:hover {
+            background: #cc0000;
+        }
+
+        .reset-ratings {
+            background: #ff4444;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+
+        .reset-ratings:hover {
+            background: #cc0000;
+        }
+
+        /* Stiluri pentru autentificare admin */
+        .admin-login {
+            position: absolute;
+            top: 120px;
+            right: 20px;
+            z-index: 10000;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            pointer-events: auto;
+        }
+
+        .header {
+            pointer-events: none;
+        }
+
+        .header > * {
+            pointer-events: auto;
+        }
+
+        @media screen and (max-width: 768px) {
+            .admin-login {
+                top: 120px;
+                right: 10px;
+                font-size: 12px;
+                padding: 6px 12px;
+            }
+        }
+
+        // Adăugăm în head, după celelalte stiluri
+        </style>
+        <script>
+        // Adăugăm variabilă și funcții pentru autentificare
+        let isAdmin = false;
+        const ADMIN_PASSWORD = 'admin123'; // Schimbă această parolă cu una sigură
+
+        function toggleAdmin() {
+            if (!isAdmin) {
+                const password = prompt('Introduceți parola de administrator:');
+                if (password === ADMIN_PASSWORD) {
+                    isAdmin = true;
+                    document.body.classList.add('admin-mode');
+                    const adminButton = document.querySelector('.admin-login');
+                    if (adminButton) {
+                        adminButton.textContent = 'Deconectare Admin';
+                        adminButton.style.background = '#ff4444';
+                    }
+                    alert('Autentificat cu succes ca administrator!');
+                } else {
+                    alert('Parolă incorectă!');
+                }
+            } else {
+                isAdmin = false;
+                document.body.classList.remove('admin-mode');
+                const adminButton = document.querySelector('.admin-login');
+                if (adminButton) {
+                    adminButton.textContent = 'Login Admin';
+                    adminButton.style.background = '#4CAF50';
+                }
+            }
+        }
+
+        // Modificăm funcțiile de ștergere pentru a verifica dacă este admin
+        function deleteComment(locationName, timestamp, containerId) {
+            if (!isAdmin) {
+                alert('Trebuie să fiți administrator pentru a șterge comentarii!');
+                return;
+            }
+            if (confirm('Sigur doriți să ștergeți acest comentariu?')) {
+                if (comments[locationName]) {
+                    comments[locationName] = comments[locationName].filter(
+                        comment => comment.timestamp !== timestamp
+                    );
+                    localStorage.setItem('recyclingPointComments', JSON.stringify(comments));
+                    
+                    const container = document.getElementById(containerId);
+                    container.innerHTML = '';
+                    comments[locationName].forEach(comment => {
+                        addCommentToDisplay(comment, containerId, locationName);
+                    });
+                }
+            }
+        }
+
+        function resetRatings(locationName) {
+            if (!isAdmin) {
+                alert('Trebuie să fiți administrator pentru a reseta ratingurile!');
+                return;
+            }
+            
+            if (confirm('Sigur doriți să resetați toate ratingurile pentru această locație?')) {
+                if (ratings[locationName]) {
+                    delete ratings[locationName];
+                    localStorage.setItem('recyclingPointRatings', JSON.stringify(ratings));
+                    
+                    // Reîmprospătăm afișarea ratingului
+                    const popupContent = document.querySelector('.popup-content');
+                    if (popupContent) {
+                        const ratingContainer = popupContent.querySelector('.rating-container');
+                        if (ratingContainer) {
+                            const ratingValue = ratingContainer.querySelector('.rating-value');
+                            const ratingCount = ratingContainer.querySelector('.rating-count');
+                            if (ratingValue && ratingCount) {
+                                ratingValue.textContent = '0';
+                                ratingCount.textContent = '(0 voturi)';
+                            }
+
+                            // Reactivăm formularul de rating
+                            const form = ratingContainer.querySelector('.rating-form');
+                            if (form) {
+                                form.querySelectorAll('input[type="radio"]').forEach(input => {
+                                    input.disabled = false;
+                                    input.checked = false;
+                                });
+                                const submitButton = form.querySelector('.rating-submit');
+                                if (submitButton) {
+                                    submitButton.style.display = 'block';
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        </script>
+    </head>
+    <body>
+        <div class="header">
+            <button class="dark-mode-toggle" onclick="toggleDarkMode()">
+                <span id="dark-mode-icon">🌙</span>
+                <span id="dark-mode-text">Mod Întunecat</span>
+            </button>
+            <button class="admin-login" onclick="toggleAdmin()">Login Admin</button>
+            <h2>Harta Punctelor de Reciclare din Ploiești</h2>
+            <div class="subtitle">R.E.S.E.T - Reciclăm pentru un viitor mai bun</div>
+        </div>
+
+        <div class="weather-clock-container">
+            <div id="clock">00:00:00</div>
+            <div id="weather">
+                <img class="weather-icon" src="https://openweathermap.org/img/wn/02d@2x.png" alt="Weather icon">
+                <div class="weather-info">
+                    <div class="weather-temp">Se încarcă...</div>
+                    <div class="weather-desc">Se încarcă...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="filter-container">
+            <button class="filter-button active" onclick="filterMarkers('all')">Toate punctele</button>
+            <button class="filter-button" onclick="filterMarkers('reciclare')">Sticle</button>
+            <button class="filter-button" onclick="filterMarkers('haine')">Haine</button>
+            <button class="filter-button" onclick="filterMarkers('electronice')">Electronice</button>
+            <button class="filter-button" onclick="filterMarkers('fier')">Fier Vechi</button>
+            <button class="filter-button" onclick="filterMarkers('liceu')">Liceul 1 Mai</button>
+            <button class="filter-button" onclick="filterMarkers('carton')">Carton</button>
+        </div>
+
+        <div id="map"></div>
+        
+        <div class="map-loading">
+            <span>Se încarcă harta...</span>
+        </div>
+
+        <div class="search-container">
+            <input type="text" id="searchBox" placeholder="Caută locația...">
+            <div id="suggestions" class="suggestion-box"></div>
+            <button onclick="searchLocation()">Caută</button>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: yellow;"></div>
+                <div class="legend-text">Centre de reciclare</div>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: blue;"></div>
+                <div class="legend-text">Centre de reciclare</div>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: red;"></div>
+                <div class="legend-text">Centre colectare haine</div>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: purple;"></div>
+                <div class="legend-text">Liceul Tehnologic 1 Mai</div>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: green;"></div>
+                <div class="legend-text">Centru colectare carton</div>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #FFA500;"></div>
+                <div class="legend-text">Centru colectare fier vechi</div>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: black;"></div>
+                <div class="legend-text">Punct de reciclare Electronice</div>
+            </div>
+        </div>
+
+        <div class="info-button-container">
+            <button class="info-button" onclick="toggleInfoBox()">Importanța Reciclării</button>
+            <button class="info-button2" onclick="toggleProjectBox()">Detalii Proiect</button>
+        </div>
+        <div class="info-box" id="infoBox">
+            <p>Unul dintre principalele obiective europene atunci când vine vorba de reciclare este reducerea cantității de deșeuri municipale la jumătate până în 2030. 
+apoi, toate statele membre UE trebuie să recicleze cel puțin 60% din deșeurile lor municipale. Mai mult, sunt vizate ODD-urile 11 și 12 crearea de comunități durabile și un consum și producție responsabil. Una dintre cele mai urgente probleme ale societății noastre este protejarea mediului și una dintre cele mai mari oportunități este utilizarea tehnologiei digitale, care poate și trebuie să fie utilizată pentru a rezolva problemele actuale. Reciclarea este esențială pentru un mediu curat și sănătos. Orașul nostru se confruntă cu provocări ecologice, iar colectarea și reciclarea deșeurilor ajută la reducerea poluării și protejarea resurselor naturale.</p>
+        </div>
+
+        <div class="info-box2" id="projectBox">
+            <p>Proiectul nostru își propune  să implementeze practici ecologice în școala noastră, învățându-i pe elevii noștri reciclare și, de asemenea, dezvoltarea abilităților lor antreprenoriale în acest sens. Prin acest proiect ne propunem să îmbunătățim conștientizarea mediului în școala noastră, cu accent pe reciclarea, reducerea și reutilizarea materialelor. Acesta este un proiect dedicat mapării punctelor de reciclare din Ploiești, utilizând biblioteca Leaflet pentru afișarea hărții și punctelor de interes. Scopul este de a facilita accesul cetățenilor la centrele de colectare, contribuind astfel la un mediu mai curat și sustenabil.</p>
+        </div>
+
+        <button onclick="window.open('https://forms.office.com/r/XgiSMZkQi5', '_blank')" class="feedback-button">
+            📝 Formular Feedback
+        </button>
+
+        <div class="footer">
+            © 2025 Harta Punctelor de Reciclare Ploiești | Contact: adineagu25@gmail.com
+        </div>
+
+        <button onclick="openSuggestionModal()" class="suggest-point-button">
+            📍 Sugerează un punct nou
+        </button>
+
+        <div id="suggestionModal" class="modal">
+            <div class="modal-content">
+                <button class="modal-close" onclick="closeSuggestionModal()">&times;</button>
+                <h3>Sugerează un punct nou de reciclare</h3>
+                <form id="suggestionForm" class="suggestion-form" onsubmit="submitSuggestion(event)">
+                    <div class="form-group">
+                        <label for="name">Numele locației*</label>
+                        <input type="text" id="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="type">Tipul punctului*</label>
+                        <select id="type" required>
+                            <option value="">Selectează tipul</option>
+                            <option value="reciclare">Centru de reciclare</option>
+                            <option value="haine">Centru colectare haine</option>
+                            <option value="electronice">Punct reciclare electronice</option>
+                            <option value="fier">Centru colectare fier vechi</option>
+                            <option value="carton">Centru colectare carton</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="address">Adresa*</label>
+                        <input type="text" id="address" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="description">Descriere (opțional)</label>
+                        <textarea id="description" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="contact">Contact (opțional)</label>
+                        <input type="text" id="contact" placeholder="Telefon sau email">
+                    </div>
+                    <button type="submit" class="submit-button">Trimite sugestia</button>
+                </form>
+            </div>
+        </div>
+
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/leaflet.locatecontrol/dist/L.Control.Locate.min.js"></script>
+        <script>
+            var map = L.map('map', {
+                tap: false,
+                bounceAtZoomLimits: false,
+                touchZoom: true,
+                dragging: true
+            }).setView([44.9362, 26.0325], 13);
+
+            var lightTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            });
+
+            var darkTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                className: 'dark-map'
+            });
+
+            lightTileLayer.addTo(map);
+
+            // Adăugăm butonul de localizare pentru cel mai apropiat centru
+            var findNearestControl = L.Control.extend({
+                options: {
+                    position: 'topleft'
+                },
+
+                onAdd: function (map) {
+                    var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+                    var button = L.DomUtil.create('a', 'nearest-button', container);
+                    button.href = '#';
+                    button.title = 'Găsește cel mai apropiat centru de reciclare';
+                    button.innerHTML = '📍';
+                    button.style.fontSize = '20px';
+                    button.style.textDecoration = 'none';
+
+                    L.DomEvent.on(button, 'click', function(e) {
+                        L.DomEvent.stopPropagation(e);
+                        L.DomEvent.preventDefault(e);
+                        findNearestCenter();
+                    });
+
+                    return container;
+                }
+            });
+
+            map.addControl(new findNearestControl());
+
+            // Adăugăm scara
+            L.control.scale({
+                metric: true,
+                imperial: false
+            }).addTo(map);
+
+            var locations = [
+            { name: "Centru Kaufland Vest", lat: 44.93945015946911, lon: 25.988469494300418, img: "https://i.imgur.com/YIqCFdF.png" },
+            { name: "Centru Lidl Târgoviștei", lat: 44.94115121416693, lon: 25.989477896155005,  img: "https://i.imgur.com/98oK6GP.png" },
+            { name: "Centru Lidl Nord", lat: 44.950933210899144, lon: 25.998758794000043, img: "https://i.imgur.com/1KEu2VY.png" },
+            { name: "Centru Haine Armata Salvării", lat: 44.948014637897266, lon: 26.004915627709174, img: "https://i.imgur.com/FVco7pD.png" },
+	    { name: "Centru Auchan", lat: 44.94424116467619, lon: 25.964908750691322, img: "https://i.imgur.com/2shBZDy.png" },
+            { name: "Centru Selgros", lat: 44.94241004626234, lon: 25.977772646030505,  img: "https://i.imgur.com/amRrirx.png" },
+            { name: "Centru Kaufland Sud", lat: 44.92665122668858, lon: 26.036067900017674, img: "https://i.imgur.com/KrQ0n21.png" },
+	    { name: "Centru Kaufland Nord", lat: 44.95568250019915, lon: 25.99332149368513, img: "https://i.imgur.com/759mR2D.png" },
+            { name: "Centru Penny Vest", lat: 44.934912439313216, lon: 25.989790804586008,  img: "https://i.imgur.com/OUDBKsu.png" },
+            { name: "Centru Penny Nord", lat: 44.95527763041254, lon: 26.004302286148636, img: "https://i.imgur.com/UDvV2tj.png" },
+	    { name: "Centru Penny Deltei", lat: 44.94839621732207, lon: 25.997236488863408, img: "https://i.imgur.com/63IqC8p.png" },
+            { name: "Centru Carrefour Afi", lat: 44.947533507237644, lon: 26.03373745530332,  img: "https://i.imgur.com/vO4KjPI.png" },
+            { name: "Centru Lidl Libertății", lat: 44.92740832869294, lon: 25.99103196333847, img: "https://i.imgur.com/nQAY5Tr.png" },
+	    { name: "Centru Carrefour Shopping City", lat: 44.9658338398275, lon: 25.970048244557773, img: "https://i.imgur.com/LDJybbV.png" },
+	    { name: "Centru Carrefour Value Centre", lat: 44.92823636618155, lon: 26.036944994568305, img: "https://i.imgur.com/wYRuqf4.png" },
+	    { name: "Centru Lidl Value Centre", lat: 44.92683826663409, lon: 26.033976638458682, img: "https://i.imgur.com/qU0BcVl.png" },
+	    { name: "Centru Carrefour Libertății", lat: 44.92713310733159, lon: 25.99301852222111, img: "https://i.imgur.com/UsIuGQw.png" },
+	    { name: "Centru La Cocoș 1", lat: 44.94218420758893, lon: 25.990811634190816, img: "https://i.imgur.com/AxUz0gr.png" },
+	    { name: "Centru La Cocoș 2", lat: 44.94659611291525, lon: 25.988229750795984, img: "https://i.imgur.com/nzq7L8o.jpeg" },
+	    { name: "Centru Profi Rulmenți Grei", lat: 44.92188307813473, lon: 26.034557376045, img: "https://i.imgur.com/T85cfHJ.png" },
+	    { name: "Centru Profi Bulevardul București", lat: 44.917995455108596, lon: 26.03429618599898, img: "https://i.imgur.com/GDDXgzp.png" },
+	    { name: "Centru Profi Mărășești", lat: 44.92971569502423, lon: 25.996429235673553, img: "https://i.imgur.com/eQkTNnb.png" },
+	    { name: "Centru Profi Înfrățirii", lat: 44.93619718322097, lon: 25.983744371710035, img: "https://i.imgur.com/p3vKhoa.png" },
+	    { name: "Centru Profi Malu Roșu", lat: 44.94204427502193, lon: 25.9968841734938, img: "https://i.imgur.com/Un0m3TB.png" },
+	    { name: "Centru Profi Iezerului", lat: 44.931651636793305, lon: 25.994441869820747, img: "https://i.imgur.com/GgDD2hx.png" },
+	    { name: "Centru Profi Sondelor", lat: 44.92688051907894, lon: 26.002965790547634, img: "https://i.imgur.com/mhTITAF.png" },
+	    { name: "Centru Profi Castor", lat: 44.95757869154921, lon: 26.012240248312896, img: "https://i.imgur.com/PgUMAbX.png" },
+	    { name: "Centru Profi Cameliei", lat: 44.96161125902951, lon: 26.006986276366522, img: "https://i.imgur.com/OSjWjjt.png" },
+	    { name: "Centru Profi Lupeni", lat: 44.933948972428546, lon: 26.032677482363123, img: "https://i.imgur.com/Zeyq2pf.png" },
+	    { name: "Centru Profi Chimiei", lat: 44.938954746962324, lon: 26.04650442924184, img: "https://i.imgur.com/WW3eFsr.png" },
+	    { name: "Centru Profi Ștrandului", lat: 44.95240514347621, lon: 26.044044377129854, img: "https://i.imgur.com/ifxr5kK.png" },
+	    { name: "Centru Maya Cina", lat: 44.95199030721507, lon: 26.010507339573383, img: "https://i.imgur.com/8EbOBmu.jpeg" },
+	    { name: "Centru Mega Image Baraolt", lat: 44.9319524363924, lon: 25.986106591897652, img: "https://i.imgur.com/iqXd6Le.png" },
+	    { name: "Centru Mega Image Piața Aurora", lat: 44.93444705182612, lon: 25.987981904078666, img: "https://i.imgur.com/aEZtB2d.png" },
+	    { name: "Centru Mega Image Domnișori", lat: 44.93033349740169, lon: 26.003870999604604, img: "https://i.imgur.com/4j2KQlr.png" },
+	    { name: "Centru Mega Image Mărășești", lat: 44.93256929301539, lon: 26.005961265009507, img: "https://i.imgur.com/t5n8hLS.png" },
+	    { name: "Centru Mega Image Cantacuzino", lat: 44.937352207636486, lon: 26.000910917930696, img: "https://i.imgur.com/GS4gfFC.png" },
+	    { name: "Centru Mega Image Cuza Vodă", lat: 44.940744376600584, lon: 26.018704217630486, img: "https://i.imgur.com/Rs88Ecm.png" },
+	    { name: "Centru Mega Image Malu Roșu", lat: 44.942523610225315, lon: 25.99774296610126, img: "https://i.imgur.com/vKlr0Ch.png" },
+	    { name: "Centru Mega Image Mercur", lat: 44.94122759319338, lon: 26.024522401704477, img: "https://via.placeholder.com/150" },
+	    { name: "Centru Mega Image Carpați", lat: 44.94416117900826, lon: 26.018732237376, img: "https://i.imgur.com/dkAlyLg.png" },
+	    { name: "Centru Mega Image Gheorghe Doja", lat: 44.945313615154014, lon: 26.021204363309046, img: "https://i.imgur.com/QntlHtO.png" },
+	    { name: "Centru Mega Image Piața Mihai Viteazul", lat: 44.948332381287706, lon: 26.0098575764899, img: "https://i.imgur.com/26Xx35y.png" },
+	    { name: "Centru Mega Image Republicii 108", lat: 44.94930016982254, lon: 26.0066099173101, img: "https://i.imgur.com/uX9mwbz.png" },
+	    { name: "Centru Mega Image Republicii 197", lat: 44.951422933997286, lon: 26.000486859465504, img: "https://i.imgur.com/jHSdbKk.png" },
+	    { name: "Centru Mega Image Nordului 1", lat: 44.95296933145662, lon: 26.000782754640486, img: "https://i.imgur.com/vidEQEJ.png" },
+	    { name: "Centru Mega Image Nordului 7", lat: 44.956774801117895, lon: 26.005644582670357, img: "https://i.imgur.com/b3OpOVD.png" },
+	    { name: "Centru Mega Image Trotuș Cina", lat: 44.951966734610856, lon: 26.009794044822957, img: "https://i.imgur.com/0SaTy3P.png" },
+	    { name: "Centru Mega Image Lupeni", lat: 44.93390183911972, lon: 26.03291425046313, img: "https://i.imgur.com/pyQZOAM.png" },
+	    { name: "Centru Mega Image Alexandru Glinka", lat: 44.931399978403185, lon: 26.03299967247601, img: "https://i.imgur.com/oCWNvrU.png" },
+	    { name: "Centru Mega Image Bobâlna", lat: 44.92858424125857, lon: 26.02485956922303, img: "https://i.imgur.com/xaDnjO3.png" },
+	    { name: "Centru Lidl Grădinari", lat: 44.93797965232968, lon: 26.047367695099783, img: "https://i.imgur.com/fzZhFLP.png" },
+	    { name: "Liceul Tehnologic '1Mai'", lat: 44.91772590503644, lon: 26.036408581601673, img: "https://i.imgur.com/47bpRTM.png" },
+	    { name: "Centru Carton Vrancart Industriei", lat: 44.92278531598231, lon: 26.0329718831226, img: "https://i.imgur.com/dkOQeIy.png" },
+	    { name: "Centru Haine Value Centre", lat: 44.92855995765439, lon: 26.03649273491143, img: "https://i.imgur.com/dcj7EYs.png" },
+	    { name: "Centru Haine UPG", lat: 44.91485881229339, lon: 26.036212258899297, img: "https://i.imgur.com/JqASMVp.png" },
+	    { name: "Centru Fier Vechi Bereasca", lat: 44.95494598302517, lon: 26.047928169624758, img: "https://i.imgur.com/JwCrCe6.png" },
+	    { name: "Punct de reciclare Electronice", lat: 44.93177961512632, lon: 26.036239719664696, img: "https://i.imgur.com/G3inBqU.png" },
+        { name: "Centru Fier Vechi Podul Înalt", lat: 44.93951888568955, lon: 25.97747920418917, img: "https://i.imgur.com/so9yBex.png" },
+        { name: "Centru Lidl Găgeni", lat: 44.96131867601605, lon: 26.01055984770399, img: "https://i.imgur.com/w6GfgXq.jpeg" },
+        { name: "Centru Penny Ștrandului", lat: 44.95672328184601, lon: 26.0503684994479, img: "https://via.placeholder.com/150" },
+        { name: "Centru Fier Vechi Alnes Recycling", lat: 44.940940461796444, lon: 26.06644035505379, img: "https://i.imgur.com/CjaZaRY.png" },
+        { name: "Centru Fier Vechi Blue Bird", lat: 44.94178559460994, lon: 26.07154479678411, img: "https://i.imgur.com/oYmYOHK.png" },
+        { name: "Centru Fier Vechi Remat Holding", lat: 44.94094213974521, lon: 26.05507363397612, img: "https://i.imgur.com/ZEgVoQH.png" },
+        { name: "Centru Fier Vechi Remat Prahova", lat: 44.948540640873965, lon: 26.033681634197446, img: "https://i.imgur.com/KiPqM1u.png" },
+        { name: "Centru Fier Vechi Pacos ECO", lat: 44.93878751029027, lon: 25.98468625114949, img: "https://i.imgur.com/1r3StOY.png" },
+        { name: "Centru Carton Pacos ECO", lat: 44.93878751029027, lon: 25.98468625114949, img: "https://i.imgur.com/1r3StOY.png" },
+        { name: "Centru Reciclare Carrefour Market", lat: 44.93419607045766, lon: 25.9890249839988, img: "https://i.imgur.com/igebtfl.png" },
+        { name: "Centru Fier Vechi Poligonului", lat: 44.95145298990328, lon: 25.98718672486747, img: "https://i.imgur.com/P2VElO3.png" },
+        { name: "Centru Reciclare Carrefour Express", lat: 44.94528113689114, lon: 26.0221158078954, img: "https://i.imgur.com/ob58V87.png" },
+        { name: "Centru Reciclare Carrefour Market Republicii 177", lat: 44.94825585869992, lon: 26.008076206300352, img: "https://i.imgur.com/cJ00XWG.png" },
+        { name: "Centru Reciclare Mega Image Republicii", lat: 44.94570380061145, lon: 26.03351956764139, img: "https://i.imgur.com/No9l0ES.png" },
+        { name: "Centru Reciclare La Doi Pasi Nord", lat: 44.9568705333091, lon: 25.99819875745825, img: "https://i.imgur.com/P34dIRx.png" },
+        { name: "Centru Reciclare La Doi Pasi Republicii", lat: 44.95063296543526, lon: 26.003031306569355, img: "https://i.imgur.com/dnran5q.png" },
+        { name: "Centru Reciclare La Doi Pasi Centru", lat: 44.94193178478527, lon: 26.02736694639364, img: "https://i.imgur.com/7ZxXsuf.png" },
+        { name: "Centru Reciclare La Doi Pasi Sud", lat: 44.91840704753211, lon: 26.037673537155662, img: "https://i.imgur.com/tzUWrUf.png" },
+        { name: "Centru Reciclare Mega Image Chimiei", lat: 44.94026446242694, lon: 26.04673806681187, img: "https://i.imgur.com/tJz2Uq1.png" }
+        ];
+
+        var markers = {};
+
+        L.Popup.prototype.options.closeButton = true;
+        L.Popup.prototype.options.autoClose = false;
+        L.Popup.prototype.options.closeOnClick = false;
+        L.Popup.prototype.options.closeOnEscapeKey = true;
+
+        // Configurare pentru Google Sheets
+        const SHEETS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzCk62zV0J9yF1t6mmczLfb8S_BiUo70Adl3ras4p3cA591oxt96lHykG7Xw22fz55P/exec';
+
+        // Store ratings and comments in localStorage
+        const ratings = JSON.parse(localStorage.getItem('recyclingPointRatings')) || {};
+        const comments = JSON.parse(localStorage.getItem('recyclingPointComments')) || {};
+
+        // Funcție pentru a gestiona ratingul
+        function handleRating(button, locationName) {
+            const form = button.closest('.rating-form');
+            const submitButton = button;
+            const messageDiv = form.querySelector('.rating-message');
+            const ratingValue = form.querySelector('input[name="rating"]:checked')?.value;
+
+            if (!ratingValue) {
+                messageDiv.textContent = 'Te rugăm să selectezi un rating';
+                messageDiv.classList.add('rating-error');
+                return;
+            }
+
+            submitButton.disabled = true;
+            messageDiv.textContent = 'Se trimite...';
+            messageDiv.classList.remove('rating-error');
+
+            // Prepare data for Google Sheets
+            const data = new URLSearchParams({
+                action: 'addRating',
+                location: locationName,
+                rating: ratingValue,
+                timestamp: new Date().toISOString()
+            }).toString();
+
+            // Send to Google Sheets
+            fetch(`${SHEETS_SCRIPT_URL}?${data}`, {
+                method: 'GET',
+                mode: 'no-cors'
+            }).then(() => {
+                // Update localStorage
+                if (!ratings[locationName]) {
+                    ratings[locationName] = {
+                        total: 0,
+                        count: 0
+                    };
+                }
+                
+                ratings[locationName].total += parseInt(ratingValue);
+                ratings[locationName].count += 1;
+                localStorage.setItem('recyclingPointRatings', JSON.stringify(ratings));
+
+                // Update display
+                const container = form.closest('.rating-container');
+                updateRatingDisplay(container, ratings[locationName]);
+
+                messageDiv.textContent = 'Rating trimis cu succes!';
+                
+                // Disable form after submission
+                form.querySelectorAll('input[type="radio"]').forEach(input => {
+                    input.disabled = true;
+                });
+                submitButton.style.display = 'none';
+            }).catch(error => {
+                console.error('Eroare la trimiterea rating-ului:', error);
+                messageDiv.textContent = 'A apărut o eroare. Te rugăm să încerci din nou.';
+                messageDiv.classList.add('rating-error');
+                submitButton.disabled = false;
+            });
+        }
+
+        // Modificăm funcția de adăugare a comentariilor pentru a include butonul de ștergere
+        function addCommentToDisplay(comment, containerId, locationName) {
+            const container = document.getElementById(containerId);
+            const commentElement = document.createElement('div');
+            commentElement.className = 'comment-item';
+            
+            const date = new Date(comment.timestamp);
+            const formattedDate = date.toLocaleDateString('ro-RO', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+            commentElement.innerHTML = `
+                <div class="comment-header">
+                    <span class="comment-date">${formattedDate}</span>
+                    <button class="delete-button" onclick="deleteComment('${locationName}', '${comment.timestamp}', '${containerId}')">Șterge</button>
+                </div>
+                <div class="comment-text">${escapeHtml(comment.text)}</div>
+            `;
+
+            container.insertBefore(commentElement, container.firstChild);
+        }
+
+        // Modificăm funcția handleComment pentru a transmite numele locației
+        function handleComment(button, locationName, index) {
+            const form = button.closest('.comment-form');
+            const submitButton = button;
+            const textarea = form.querySelector('.comment-input');
+            const commentText = textarea.value.trim();
+
+            if (!commentText) return;
+
+            submitButton.disabled = true;
+            submitButton.textContent = 'Se trimite...';
+
+            const data = new URLSearchParams({
+                action: 'addComment',
+                location: locationName,
+                comment: commentText,
+                timestamp: new Date().toISOString()
+            }).toString();
+
+            fetch(`${SHEETS_SCRIPT_URL}?${data}`, {
+                method: 'GET',
+                mode: 'no-cors'
+            }).then(() => {
+                if (!comments[locationName]) {
+                    comments[locationName] = [];
+                }
+                
+                const newComment = {
+                    text: commentText,
+                    timestamp: new Date().toISOString()
+                };
+                
+                comments[locationName].unshift(newComment);
+                localStorage.setItem('recyclingPointComments', JSON.stringify(comments));
+
+                // Transmitem și numele locației când adăugăm comentariul
+                addCommentToDisplay(newComment, `comments-${index}`, locationName);
+
+                form.reset();
+                submitButton.disabled = false;
+                submitButton.textContent = 'Adaugă comentariu';
+            }).catch(error => {
+                console.error('Eroare la trimiterea comentariului:', error);
+                submitButton.disabled = false;
+                submitButton.textContent = 'Adaugă comentariu';
+                
+                const errorMessage = document.createElement('div');
+                errorMessage.className = 'rating-error';
+                errorMessage.textContent = 'Nu s-a putut trimite comentariul. Te rugăm să încerci din nou.';
+                form.insertBefore(errorMessage, submitButton);
+                
+                setTimeout(() => {
+                    errorMessage.remove();
+                }, 3000);
+            });
+        }
+
+        // Modificăm funcția de ștergere a comentariilor
+        function deleteComment(locationName, timestamp, containerId) {
+            if (!isAdmin) {
+                alert('Trebuie să fiți administrator pentru a șterge comentarii!');
+                return;
+            }
+
+            if (confirm('Sigur doriți să ștergeți acest comentariu?')) {
+                if (comments[locationName]) {
+                    // Găsim și ștergem comentariul din array
+                    comments[locationName] = comments[locationName].filter(
+                        comment => comment.timestamp !== timestamp
+                    );
+                    
+                    // Salvăm în localStorage
+                    localStorage.setItem('recyclingPointComments', JSON.stringify(comments));
+                    
+                    // Reîmprospătăm afișarea
+                    const container = document.getElementById(containerId);
+                    if (container) {
+                        container.innerHTML = '';
+                        comments[locationName].forEach(comment => {
+                            addCommentToDisplay(comment, containerId, locationName);
+                        });
+                    }
+                }
+            }
+        }
+
+        // Actualizăm template-ul pentru popup
+        function createPopupContent(loc, index) {
+            return `
+                <div class="popup-content">
+                    <div class="popup-header">
+                        <h3>${loc.name}</h3>
+                    </div>
+                    <div class="popup-body">
+                        <div class="popup-img-container">
+                            <img src="${loc.img}" alt="${loc.name}" class="popup-img">
+                            <div class="coordinates-badge">
+                                ${loc.lat.toFixed(4)}, ${loc.lon.toFixed(4)}
+                            </div>
+                        </div>
+                        <div class="rating-container">
+                            <div class="average-rating">Rating: <span class="rating-value">0</span>/5</div>
+                            <div class="rating-count">(0 voturi)</div>
+                            <form class="rating-form" onsubmit="return false;">
+                                <div class="stars">
+                                    <input type="radio" id="star5-${index}" name="rating" value="5">
+                                    <label for="star5-${index}">★</label>
+                                    <input type="radio" id="star4-${index}" name="rating" value="4">
+                                    <label for="star4-${index}">★</label>
+                                    <input type="radio" id="star3-${index}" name="rating" value="3">
+                                    <label for="star3-${index}">★</label>
+                                    <input type="radio" id="star2-${index}" name="rating" value="2">
+                                    <label for="star2-${index}">★</label>
+                                    <input type="radio" id="star1-${index}" name="rating" value="1">
+                                    <label for="star1-${index}">★</label>
+                                </div>
+                                <button type="button" class="rating-submit" onclick="handleRating(this, '${loc.name}')">Trimite rating</button>
+                                <button type="button" class="reset-ratings" onclick="resetRatings('${loc.name}')">Resetează ratingurile</button>
+                                <div class="rating-message"></div>
+                            </form>
+                        </div>
+                        <div class="comments-container">
+                            <h4>Comentarii</h4>
+                            <div class="comments-list" id="comments-${index}">
+                                <!-- Comentariile vor fi adăugate dinamic aici -->
+                            </div>
+                            <form class="comment-form" onsubmit="return false;">
+                                <textarea class="comment-input" placeholder="Adaugă un comentariu..." required></textarea>
+                                <button type="button" class="comment-submit" onclick="handleComment(this, '${loc.name}', ${index})">Adaugă comentariu</button>
+                            </form>
+                        </div>
+                        <button class="directions-btn" data-lat="${loc.lat}" data-lon="${loc.lon}">
+                            Obține indicații
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Actualizăm crearea marker-ilor pentru a folosi noul template
+        locations.forEach(function(loc, index) {
+            var markerOptions = {
+                icon: L.icon({
+                    iconUrl: loc.name.toLowerCase().includes('haine') ? 
+                            'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png' :
+                            loc.name.toLowerCase().includes('carton') ?
+                            'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png' :
+                            loc.name.toLowerCase().includes('liceul') ?
+                            'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png' :
+                            loc.name.toLowerCase().includes('fier vechi') ?
+                            'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png' :
+                            loc.name.toLowerCase().includes('electronice') ?
+                            'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-black.png' :
+                            index % 2 === 0 ?
+                            'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-yellow.png' :
+                            'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                    iconSize: [25, 41],
+                    iconAnchor: [12, 41],
+                    popupAnchor: [1, -34],
+                    shadowSize: [41, 41]
+                }),
+                riseOnHover: true,
+                title: loc.name
+            };
+            
+            var marker = L.marker([loc.lat, loc.lon], markerOptions).addTo(map);
+            var popupContent = createPopupContent(loc, index);
+
+            var popup = L.popup({
+                maxWidth: 300,
+                minWidth: 250,
+                autoPan: true,
+                autoPanPadding: [50, 50],
+                keepInView: true,
+                closeButton: true,
+                autoClose: true,
+                closeOnClick: true
+            }).setContent(popupContent);
+
+            marker.bindPopup(popup);
+            markers[loc.name.toLowerCase()] = marker;
+        });
+
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('directions-btn')) {
+                const lat = parseFloat(e.target.getAttribute('data-lat'));
+                const lon = parseFloat(e.target.getAttribute('data-lon'));
+                if (!isNaN(lat) && !isNaN(lon)) {
+                    getDirections(lat, lon);
+                }
+            }
+        });
+
+        function toggleProjectBox() {
+            var projectBox = document.getElementById("projectBox");
+            if (projectBox.style.display === "none" || projectBox.style.display === "") {
+                projectBox.style.display = "block";
+            } else {
+                projectBox.style.display = "none";
+            }
+
+        }
+
+        function searchLocation() {
+            var query = document.getElementById("searchBox").value.toLowerCase();
+            if (markers[query]) {
+                map.setView(markers[query].getLatLng(), 15);
+                markers[query].openPopup();
+            } else {
+                alert("Locația nu a fost găsită!");
+            }
+        }
+
+        function toggleInfoBox() {
+            var infoBox = document.getElementById("infoBox");
+            if (infoBox.style.display === "none" || infoBox.style.display === "") {
+                infoBox.style.display = "block";
+            } else {
+                infoBox.style.display = "none";
+            }
+        }
+
+        var searchTimeout;
+        document.getElementById("searchBox").addEventListener("input", function(e) {
+            clearTimeout(searchTimeout);
+            var query = this.value.toLowerCase();
+            
+            searchTimeout = setTimeout(function() {
+                var suggestions = Object.keys(markers).filter(name => 
+                    name.includes(query) || 
+                    name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(query)
+                );
+
+                var suggestionBox = document.getElementById("suggestions");
+                suggestionBox.innerHTML = "";
+
+                suggestions.forEach(suggestion => {
+                    var div = document.createElement("div");
+                    div.textContent = suggestion;
+                    div.classList.add("suggestion-item");
+                    div.onclick = function() {
+                        document.getElementById("searchBox").value = suggestion;
+                        searchLocation();
+                        suggestionBox.innerHTML = "";
+                    };
+                    suggestionBox.appendChild(div);
+                });
+            }, 300);
+        });
+
+        document.addEventListener("click", function(event) {
+            if (!event.target.closest(".search-container")) {
+                document.getElementById("suggestions").innerHTML = "";
+            }
+        });
+
+        function filterMarkers(type) {
+            document.querySelectorAll('.filter-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            map.closePopup();
+
+            Object.entries(markers).forEach(([name, marker]) => {
+                const markerName = name.toLowerCase();
+                
+                if (type === 'all') {
+                    marker.addTo(map);
+                } else if (type === 'reciclare' && 
+                    !markerName.includes('haine') && 
+                    !markerName.includes('electronice') && 
+                    !markerName.includes('fier vechi') && 
+                    !markerName.includes('liceul') && 
+                    !markerName.includes('carton')) {
+                    marker.addTo(map);
+                } else if (type === 'haine' && markerName.includes('haine')) {
+                    marker.addTo(map);
+                } else if (type === 'electronice' && markerName.includes('electronice')) {
+                    marker.addTo(map);
+                } else if (type === 'fier' && markerName.includes('fier vechi')) {
+                    marker.addTo(map);
+                } else if (type === 'liceu' && markerName.includes('liceul')) {
+                    marker.addTo(map);
+                } else if (type === 'carton' && markerName.includes('carton')) {
+                    marker.addTo(map);
+                } else {
+                    map.removeLayer(marker);
+                }
+            });
+        }
+
+        filterMarkers('all');
+
+        document.querySelectorAll('.filter-button').forEach(button => {
+            button.addEventListener('click', function(e) {
+                const filterType = this.getAttribute('onclick').match(/filterMarkers\('(.+)'\)/)[1];
+                filterMarkers(filterType);
+            });
+        });
+
+        function findNearestCenter() {
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        const userLat = position.coords.latitude;
+                        const userLng = position.coords.longitude;
+                        const userLatLng = L.latLng(userLat, userLng);
+                        
+                        let nearest = null;
+                        let minDist = Infinity;
+                        
+                        Object.values(markers).forEach(marker => {
+                            const markerLatLng = marker.getLatLng();
+                            const dist = userLatLng.distanceTo(markerLatLng);
+                            if (dist < minDist) {
+                                minDist = dist;
+                                nearest = marker;
+                            }
+                        });
+                        
+                        if (nearest) {
+                            map.setView(nearest.getLatLng(), 15);
+                            nearest.openPopup();
+                            
+                            const userMarker = L.marker([userLat, userLng], {
+                                icon: L.icon({
+                                    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-grey.png',
+                                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                                    iconSize: [25, 41],
+                                    iconAnchor: [12, 41],
+                                    popupAnchor: [1, -34],
+                                    shadowSize: [41, 41]
+                                })
+                            }).addTo(map);
+                            userMarker.bindPopup('Locația ta curentă').openPopup();
+
+                            const line = L.polyline([
+                                [userLat, userLng],
+                                nearest.getLatLng()
+                            ], {
+                                color: '#4CAF50',
+                                weight: 3,
+                                opacity: 0.8,
+                                dashArray: '10, 10'
+                            }).addTo(map);
+
+                            const distance = (minDist / 1000).toFixed(2);
+                            const popupContent = `
+                                <div class="popup-content">
+                                    <h3>Cel mai apropiat centru</h3>
+                                    <p>Distanța: ${distance} km</p>
+                                    <button onclick="getDirections(${nearest.getLatLng().lat}, ${nearest.getLatLng().lng})" class="directions-btn">
+                                        Obține indicații
+                                    </button>
+                                </div>
+                            `;
+                            line.bindPopup(popupContent).openPopup();
+                        }
+                    },
+                    function(error) {
+                        console.error("Eroare la obținerea locației:", error);
+                        alert("Nu am putut obține locația ta curentă. Te rugăm să permiți accesul la locație.");
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 5000,
+                        maximumAge: 0
+                    }
+                );
+            } else {
+                alert("Geolocation nu este suportat de browser-ul tău.");
+            }
+        }
+
+        function toggleDarkMode() {
+            const body = document.body;
+            const icon = document.getElementById('dark-mode-icon');
+            const text = document.getElementById('dark-mode-text');
+            
+            body.classList.toggle('dark-mode');
+            
+            if (body.classList.contains('dark-mode')) {
+                icon.textContent = '☀️';
+                text.textContent = 'Mod Normal';
+                localStorage.setItem('darkMode', 'enabled');
+                map.removeLayer(lightTileLayer);
+                darkTileLayer.addTo(map);
+            } else {
+                icon.textContent = '🌙';
+                text.textContent = 'Mod Întunecat';
+                localStorage.setItem('darkMode', 'disabled');
+                map.removeLayer(darkTileLayer);
+                lightTileLayer.addTo(map);
+            }
+        }
+
+        // Modificăm și inițializarea dark mode pentru a include harta
+        if (localStorage.getItem('darkMode') === 'enabled') {
+            document.body.classList.add('dark-mode');
+            document.getElementById('dark-mode-icon').textContent = '☀️';
+            document.getElementById('dark-mode-text').textContent = 'Mod Normal';
+            map.removeLayer(lightTileLayer);
+            darkTileLayer.addTo(map);
+        }
+
+        map.on('loading', function() {
+            document.querySelector('.map-loading').classList.add('active');
+        });
+
+        map.on('load', function() {
+            document.querySelector('.map-loading').classList.remove('active');
+        });
+
+        map.on('popupopen', function(e) {
+            // Închide toate popup-urile deschise, cu excepția celui curent
+            map.eachLayer((layer) => {
+                if (layer instanceof L.Marker && layer.isPopupOpen() && layer !== e.popup._source) {
+                    layer.closePopup();
+                }
+            });
+
+            var popup = e.popup;
+            var content = popup.getElement();
+            content.addEventListener('mousewheel', function(e) {
+                e.stopPropagation();
+            });
+            content.addEventListener('touchstart', function(e) {
+                e.stopPropagation();
+            });
+
+            const container = popup.getElement();
+            const locationName = container.querySelector('h3')?.textContent;
+
+            if (locationName) {
+                // Actualizăm ratingul
+                const ratingContainer = container.querySelector('.rating-container');
+                if (ratingContainer && ratings[locationName]) {
+                    updateRatingDisplay(ratingContainer, ratings[locationName]);
+                }
+
+                // Actualizăm comentariile
+                const commentsContainer = container.querySelector('.comments-list');
+                if (commentsContainer && comments[locationName]) {
+                    commentsContainer.innerHTML = ''; // Curățăm containerul
+                    comments[locationName].forEach(comment => {
+                        addCommentToDisplay(comment, commentsContainer.id, locationName);
+                    });
+                }
+            }
+        });
+
+        // Funcție pentru închiderea tuturor popup-urilor deschise
+        function closeAllPopups() {
+            map.eachLayer((layer) => {
+                if (layer instanceof L.Marker && layer.isPopupOpen()) {
+                    layer.closePopup();
+                }
+            });
+        }
+
+        // Funcție pentru obținerea indicațiilor
+        function getDirections(lat, lon) {
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        const userLat = position.coords.latitude;
+                        const userLon = position.coords.longitude;
+                        const url = `https://www.google.com/maps/dir/${userLat},${userLon}/${lat},${lon}`;
+                        window.open(url, '_blank');
+                    },
+                    function(error) {
+                        console.error("Eroare la obținerea locației:", error);
+                        alert("Nu am putut obține locația ta curentă. Te rugăm să permiți accesul la locație.");
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 5000,
+                        maximumAge: 0
+                    }
+                );
+            } else {
+                alert("Geolocation nu este suportat de browser-ul tău.");
+            }
+        }
+
+        function openSuggestionModal() {
+            document.getElementById('suggestionModal').style.display = 'flex';
+        }
+
+        function closeSuggestionModal() {
+            document.getElementById('suggestionModal').style.display = 'none';
+        }
+
+        async function submitSuggestion(event) {
+            event.preventDefault();
+            
+            // Obținem datele din formular
+            const formData = {
+                name: document.getElementById('name').value.trim(),
+                type: document.getElementById('type').value.trim(),
+                address: document.getElementById('address').value.trim(),
+                description: document.getElementById('description').value.trim(),
+                contact: document.getElementById('contact').value.trim()
+            };
+
+            // Validăm câmpurile obligatorii
+            if (!formData.name || !formData.type || !formData.address) {
+                alert('Te rugăm să completezi toate câmpurile obligatorii (numele locației, tipul și adresa).');
+                return;
+            }
+
+            const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbww_Wqkw6gmo_66LMEVLZHk4OgNfg2Rdwk2IXg-LJ7p2gAE18YLQCq-Y0CYe_yLNyuE/exec';
+            
+            try {
+                const submitButton = document.querySelector('.submit-button');
+                submitButton.textContent = 'Se trimite...';
+                submitButton.disabled = true;
+
+                // Construim URL-ul pentru cerere
+                const urlParams = new URLSearchParams();
+                Object.keys(formData).forEach(key => {
+                    urlParams.append(key, formData[key]);
+                });
+
+                const finalUrl = `${SCRIPT_URL}?${urlParams.toString()}`;
+                console.log('Se trimit datele:', formData);
+                console.log('URL cerere:', finalUrl);
+
+                const response = await fetch(finalUrl, {
+                    method: 'GET',
+                    mode: 'no-cors'
+                });
+
+                console.log('Răspuns primit:', response);
+
+                // Resetăm formularul și închidem modalul
+                document.getElementById('suggestionForm').reset();
+                closeSuggestionModal();
+                
+                alert('Mulțumim! Sugestia ta a fost trimisă cu succes și va fi revizuită în curând.');
+            } catch (error) {
+                console.error('Eroare la trimiterea formularului:', error);
+                alert('A apărut o eroare. Te rugăm să încerci din nou mai târziu.');
+            } finally {
+                const submitButton = document.querySelector('.submit-button');
+                submitButton.textContent = 'Trimite sugestia';
+                submitButton.disabled = false;
+            }
+        }
+
+        // Închide modalul când se face click în afara lui
+        window.onclick = function(event) {
+            if (event.target == document.getElementById('suggestionModal')) {
+                closeSuggestionModal();
+            }
+        }
+    </script>
+    <script>
+        // Script independent pentru ceas și meteo
+        (function() {
+            console.log('Inițializare script ceas și meteo...'); // Debug log
+
+            // Funcție pentru actualizarea ceasului
+            function updateClock() {
+                try {
+                    const now = new Date();
+                    const hours = String(now.getHours()).padStart(2, '0');
+                    const minutes = String(now.getMinutes()).padStart(2, '0');
+                    const seconds = String(now.getSeconds()).padStart(2, '0');
+                    const clockElement = document.getElementById('clock');
+                    console.log('Actualizare ceas:', `${hours}:${minutes}:${seconds}`); // Debug log
+                    if (clockElement) {
+                        clockElement.textContent = `${hours}:${minutes}:${seconds}`;
+                    } else {
+                        console.error('Elementul ceas nu a fost găsit');
+                    }
+                } catch (error) {
+                    console.error('Eroare la actualizarea ceasului:', error);
+                }
+            }
+
+            // Funcție pentru actualizarea vremii
+            function updateWeather() {
+                // Coordonatele Ploieștiului
+                const lat = 44.9462;
+                const lon = 26.0144;
+                const apiKey = 'decdea75e6dc16838b69fc4490e836b3';
+                const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric&lang=ro`;
+
+                fetch(url)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        const temp = Math.round(data.main.temp);
+                        const desc = data.weather[0].description;
+                        const icon = data.weather[0].icon;
+                        
+                        const weatherIcon = document.querySelector('.weather-icon');
+                        const weatherTemp = document.querySelector('.weather-temp');
+                        const weatherDesc = document.querySelector('.weather-desc');
+                        
+                        if (weatherIcon && weatherTemp && weatherDesc) {
+                            weatherIcon.src = `https://openweathermap.org/img/wn/${icon}@2x.png`;
+                            weatherIcon.style.display = 'block';
+                            weatherTemp.textContent = `${temp}°C`;
+                            weatherDesc.textContent = desc.charAt(0).toUpperCase() + desc.slice(1);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Eroare la obținerea datelor meteo:', error);
+                        const weatherTemp = document.querySelector('.weather-temp');
+                        const weatherDesc = document.querySelector('.weather-desc');
+                        if (weatherTemp && weatherDesc) {
+                            weatherTemp.textContent = 'Eroare';
+                            weatherDesc.textContent = 'Nu s-au putut încărca datele meteo';
+                        }
+                    });
+            }
+
+            // Funcție de inițializare
+            function init() {
+                console.log('Inițializare funcții ceas și meteo...'); // Debug log
+                
+                // Pornire ceas
+                updateClock();
+                setInterval(updateClock, 1000);
+
+                // Pornire actualizare vreme
+                updateWeather();
+                setInterval(updateWeather, 30 * 60 * 1000);
+            }
+
+            // Verificăm dacă documentul este gata
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', init);
+            } else {
+                init();
+            }
+        })();
+    </script>
+    <script>
+        // Function to add comment to display
+        function addCommentToDisplay(comment, containerId, locationName) {
+            const container = document.getElementById(containerId);
+            const commentElement = document.createElement('div');
+            commentElement.className = 'comment-item';
+            
+            const date = new Date(comment.timestamp);
+            const formattedDate = date.toLocaleDateString('ro-RO', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+            commentElement.innerHTML = `
+                <div class="comment-header">
+                    <span class="comment-date">${formattedDate}</span>
+                    <button class="delete-button" onclick="deleteComment('${locationName}', '${comment.timestamp}', '${containerId}')">Șterge</button>
+                </div>
+                <div class="comment-text">${escapeHtml(comment.text)}</div>
+            `;
+
+            container.insertBefore(commentElement, container.firstChild);
+        }
+
+        // Function to escape HTML to prevent XSS
+        function escapeHtml(unsafe) {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // Initialize comments on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            // Inițializare ratinguri
+            document.querySelectorAll('.rating-container').forEach(container => {
+                const locationName = container.closest('.popup-content').querySelector('h3').textContent;
+                if (ratings[locationName]) {
+                    updateRatingDisplay(container, ratings[locationName]);
+                    
+                    // Dezactivăm formularul dacă utilizatorul a votat deja
+                    const form = container.querySelector('.rating-form');
+                    if (form) {
+                        form.querySelectorAll('input[type="radio"]').forEach(input => {
+                            input.disabled = true;
+                        });
+                        const submitButton = form.querySelector('.rating-submit');
+                        if (submitButton) {
+                            submitButton.style.display = 'none';
+                        }
+                    }
+                }
+            });
+
+            // Inițializare comentarii
+            document.querySelectorAll('.comments-list').forEach(container => {
+                const locationName = container.closest('.popup-content').querySelector('h3').textContent;
+                if (comments[locationName] && comments[locationName].length > 0) {
+                    container.innerHTML = ''; // Curățăm containerul înainte de a adăuga comentariile
+                    comments[locationName].forEach(comment => {
+                        addCommentToDisplay(comment, container.id, locationName);
+                    });
+                }
+            });
+        });
+
+        // Actualizăm funcția de afișare a ratingului
+        function updateRatingDisplay(container, ratingData) {
+            if (!container) return;
+            
+            const ratingValue = container.querySelector('.rating-value');
+            const ratingCount = container.querySelector('.rating-count');
+            
+            if (ratingValue && ratingCount) {
+                const averageRating = ratingData.count > 0 ? (ratingData.total / ratingData.count).toFixed(1) : '0';
+                ratingValue.textContent = averageRating;
+                ratingCount.textContent = `(${ratingData.count} ${ratingData.count === 1 ? 'vot' : 'voturi'})`;
+            }
+        }
+
+        // Adăugăm o funcție pentru a încărca ratingurile și comentariile când se deschide un popup
+        map.on('popupopen', function(e) {
+            const popup = e.popup;
+            const container = popup.getElement();
+            const locationName = container.querySelector('h3')?.textContent;
+
+            if (locationName) {
+                // Actualizăm ratingul
+                const ratingContainer = container.querySelector('.rating-container');
+                if (ratingContainer && ratings[locationName]) {
+                    updateRatingDisplay(ratingContainer, ratings[locationName]);
+                }
+
+                // Actualizăm comentariile
+                const commentsContainer = container.querySelector('.comments-list');
+                if (commentsContainer && comments[locationName]) {
+                    commentsContainer.innerHTML = ''; // Curățăm containerul
+                    comments[locationName].forEach(comment => {
+                        addCommentToDisplay(comment, commentsContainer.id, locationName);
+                    });
+                }
+            }
+        });
+
+        // Adăugăm funcția de ștergere a comentariilor
+        function deleteComment(locationName, timestamp, containerId) {
+            if (!isAdmin) {
+                alert('Trebuie să fiți administrator pentru a șterge comentarii!');
+                return;
+            }
+
+            if (confirm('Sigur doriți să ștergeți acest comentariu?')) {
+                if (comments[locationName]) {
+                    // Găsim și ștergem comentariul din array
+                    comments[locationName] = comments[locationName].filter(
+                        comment => comment.timestamp !== timestamp
+                    );
+                    
+                    // Salvăm în localStorage
+                    localStorage.setItem('recyclingPointComments', JSON.stringify(comments));
+                    
+                    // Reîmprospătăm afișarea
+                    const container = document.getElementById(containerId);
+                    if (container) {
+                        container.innerHTML = '';
+                        comments[locationName].forEach(comment => {
+                            addCommentToDisplay(comment, containerId, locationName);
+                        });
+                    }
+                }
+            }
+        }
+
+        // Adăugăm funcția de resetare a ratingurilor
+        function resetRatings(locationName) {
+            if (!isAdmin) {
+                alert('Trebuie să fiți administrator pentru a reseta ratingurile!');
+                return;
+            }
+            if (confirm('Sigur doriți să resetați toate ratingurile pentru această locație?')) {
+                if (ratings[locationName]) {
+                    delete ratings[locationName];
+                    localStorage.setItem('recyclingPointRatings', JSON.stringify(ratings));
+                    
+                    const container = document.querySelector('.rating-container');
+                    if (container) {
+                        const ratingValue = container.querySelector('.rating-value');
+                        const ratingCount = container.querySelector('.rating-count');
+                        if (ratingValue && ratingCount) {
+                            ratingValue.textContent = '0';
+                            ratingCount.textContent = '(0 voturi)';
+                        }
+
+                        const form = container.querySelector('.rating-form');
+                        if (form) {
+                            form.querySelectorAll('input[type="radio"]').forEach(input => {
+                                input.disabled = false;
+                                input.checked = false;
+                            });
+                            const submitButton = form.querySelector('.rating-submit');
+                            if (submitButton) {
+                                submitButton.style.display = 'block';
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
